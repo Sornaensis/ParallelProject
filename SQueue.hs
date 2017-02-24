@@ -22,12 +22,13 @@ data SQueue a = SQueue _UPK_(TVar (TVarList a)) -- Head
                        _UPK_(TVar (TVarList a)) -- Tail
               deriving Eq
 
--- Use TMVars as boxes for synchronous boxes
 type TVarList a = TVar (TMList a)
 data TMList a = TNil | TCons (TBox a) _UPK_(TVarList a)
 
-type TBox a = Either (TMVar a) (TMVar a)
---       Reservation ---^        ^---  Data
+-- Use TMVars as boxes for synchronous boxes
+-- Sum Type differentiating Reservations and Data boxes
+data TBox a = Reservation _UPK_(TMVar a)  -- Reservation TMVar
+            | Data        _UPK_(TMVar a)  -- Data        TMVar
 
 isEmptySQueue :: SQueue a -> STM Bool
 isEmptySQueue (SQueue hptr _) = do
@@ -55,8 +56,8 @@ writeSQueue (SQueue _ tptr) boxf = do
     writeTVar tptr new_tail
     return mvar
 
-writeReservation = flip writeSQueue Left
-writeData = flip writeSQueue Right
+writeReservation = flip writeSQueue Reservation
+writeData = flip writeSQueue Data
 
 -- Return a TMVar from the head of the list
 getReservation :: SQueue a -> STM (TMVar a)
@@ -67,10 +68,10 @@ getReservation q@(SQueue hptr _) = do
         TNil -> writeData q
         TCons mbox tail -> 
             case mbox of
-                Left  mvar -> do
+                Reservation  mvar -> do
                     writeTVar hptr tail
                     return mvar
-                Right _  -> writeData q
+                Data         _  -> writeData q
 
 getData :: SQueue a -> STM (TMVar a)
 getData q@(SQueue hptr _) = do
@@ -80,8 +81,8 @@ getData q@(SQueue hptr _) = do
         TNil -> writeReservation q
         TCons mbox tail -> 
             case mbox of
-                Left  _    -> writeReservation q
-                Right mvar -> do
+                Reservation  _    -> writeReservation q
+                Data         mvar -> do
                     writeTVar hptr tail
                     return mvar
 
