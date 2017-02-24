@@ -1,26 +1,54 @@
 module Main where
 
-import           Control.Concurrent     (forkIO, threadDelay)
+import           Control.Concurrent      (forkIO, threadDelay)
+import           Control.Concurrent.Chan
 import           Control.Concurrent.STM
-import           Control.Monad          (replicateM, unless)
-import           System.IO              (hPutStr, stdout)
+import           Control.Monad           (replicateM, unless)
+import           Control.Monad.Fix       (fix)
+import           System.IO               (hPutStrLn, stdout)
 import           System.Random
 
 import           SQueue
+import           SStack
 
+chPrint :: Chan String -> IO ()
+chPrint chan = fix $ \f -> do
+    str <- readChan chan
+    hPutStrLn stdout str
+    f
 
 -- Basic Test
 main :: IO ()
-main = do queue <- atomically newSQueue :: IO (SQueue Int)
-          mapM_ forkIO $ replicate nOps (deq' queue)
-          threadDelay 2000000
-          enq' queue
-          atomically $ flip unless retry =<< (isEmptySQueue queue)
-          hPutStr stdout "Finished.\n"
+main = queueTest
+
+stackTest = do
+    queue <- atomically newSStack :: IO (SStack Int)
+    chan <- newChan
+    forkIO $ chPrint chan
+    mapM_ forkIO $ replicate nOps (pop' chan queue)
+    push' queue
+    threadDelay 1000000
+    hPutStrLn stdout "Finished."
      where
-     nOps = 1000
+     nOps = 80000
+     push' q = do nums <- replicateM nOps (randomRIO (1,20))
+                  mapM_ (push q) nums
+                  return ()
+     pop' chan q = do num <- pop q
+                      writeChan chan $  "Pop'd " ++ show num
+
+queueTest = do
+    queue <- atomically newSQueue :: IO (SQueue Int)
+    chan <- newChan
+    forkIO $ chPrint chan
+    mapM_ forkIO $ replicate nOps (deq' chan queue)
+    enq' queue
+    threadDelay 1000000
+    hPutStrLn stdout "Finished."
+     where
+     nOps = 80000
      enq' q = do nums <- replicateM nOps (randomRIO (1,20))
                  mapM_ (enqueue q) nums
                  return ()
-     deq' q = do num <- deq q
-                 hPutStr stdout $ "Deq'd " ++ show num ++ "\n"
+     deq' chan q = do num <- deq q
+                      writeChan chan $ "Deq'd " ++ show num

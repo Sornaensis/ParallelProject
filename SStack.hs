@@ -1,11 +1,11 @@
 {-# LANGUAGE CPP #-}
 
-module SQueue (
-            SQueue
-        ,   newSQueue
-        ,   isEmptySQueue
-        ,   enqueue
-        ,   deq
+module SStack (
+            SStack
+        ,   newSStack
+        ,   isEmptySStack
+        ,   push
+        ,   pop
         ) where
 
 import           Control.Concurrent           (forkIO, threadDelay)
@@ -18,8 +18,7 @@ import           Control.Monad                (replicateM, unless)
 #define _UPK_(x) {-# UNPACK #-} !(x)
 
 -- Abstract datatype to hide the guts of the queue
-data SQueue a = SQueue _UPK_(TVar (TVarList a)) -- Head
-                       _UPK_(TVar (TVarList a)) -- Tail
+data SStack a = SStack _UPK_(TVar (TVarList a)) -- Head
               deriving Eq
 
 -- Use TMVars as boxes for synchronous boxes
@@ -29,8 +28,8 @@ data TMList a = TNil | TCons (TBox a) _UPK_(TVarList a)
 type TBox a = Either (TMVar a) (TMVar a)
 --       Reservation ---^        ^---  Data
 
-isEmptySQueue :: SQueue a -> STM Bool
-isEmptySQueue (SQueue hptr _) = do
+isEmptySStack :: SStack a -> STM Bool
+isEmptySStack (SStack hptr) = do
     h <- readTVar hptr
     head <- readTVar h
     case head of
@@ -38,29 +37,28 @@ isEmptySQueue (SQueue hptr _) = do
         TCons _ _ -> return False
 
 -- Constructor
-newSQueue :: STM (SQueue a)
-newSQueue = do
+newSStack :: STM (SStack a)
+newSStack = do
     hole <- newTVar TNil
     h <- newTVar hole
-    t <- newTVar hole
-    return (SQueue h t)
+    return (SStack h)
 
 -- Create a new TMVar and put it on the tail of the list
-writeSQueue :: SQueue a -> (TMVar a -> TBox a) -> STM (TMVar a)
-writeSQueue (SQueue _ tptr) boxf = do
-    tail <- readTVar tptr
-    new_tail <- newTVar TNil
+writeSStack :: SStack a -> (TMVar a -> TBox a) -> STM (TMVar a)
+writeSStack (SStack hptr) boxf = do
+    head <- readTVar hptr
+    new_head <- newTVar TNil
     mvar <- newEmptyTMVar
-    writeTVar tail (TCons (boxf mvar) new_tail)
-    writeTVar tptr new_tail
+    writeTVar new_head (TCons (boxf mvar) head)
+    writeTVar hptr new_head
     return mvar
 
-writeReservation = flip writeSQueue Left
-writeData = flip writeSQueue Right
+writeReservation = flip writeSStack Left
+writeData = flip writeSStack Right
 
 -- Return a TMVar from the head of the list
-getReservation :: SQueue a -> STM (TMVar a)
-getReservation q@(SQueue hptr _) = do
+getReservation :: SStack a -> STM (TMVar a)
+getReservation q@(SStack hptr) = do
     h <- readTVar hptr
     head <- readTVar h
     case head of
@@ -72,8 +70,8 @@ getReservation q@(SQueue hptr _) = do
                     return mvar
                 Right _  -> writeData q
 
-getData :: SQueue a -> STM (TMVar a)
-getData q@(SQueue hptr _) = do
+getData :: SStack a -> STM (TMVar a)
+getData q@(SStack hptr) = do
     h <- readTVar hptr
     head <- readTVar h
     case head of
@@ -86,22 +84,17 @@ getData q@(SQueue hptr _) = do
                     return mvar
 
 -- API Function: blocking enqueue
-enqueue :: SQueue a -> a -> IO ()
-enqueue q a = do
+push :: SStack a -> a -> IO ()
+push q a = do
     mvar <- atomically $ getReservation q
     atomically $ putTMVar mvar a
     atomically $ do
         fulfilled <- tryPutTMVar mvar a
         unless fulfilled retry
 
-enqueue_ :: SQueue a -> a -> IO Bool
-enqueue_ = undefined
-
 -- API Function: blocking deq
-deq :: SQueue a -> IO a
-deq q = do
+pop :: SStack a -> IO a
+pop q = do
     mvar <- atomically $ getData q
     atomically $ takeTMVar mvar
 
-deq_ :: SQueue a -> IO (Maybe a)
-deq_ q = undefined
