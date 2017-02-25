@@ -1,54 +1,49 @@
 module Main where
 
-import           Control.Concurrent      (forkIO, threadDelay)
-import           Control.Concurrent.Chan
+import           Control.Concurrent           (forkIO, threadDelay)
 import           Control.Concurrent.STM
-import           Control.Monad           (replicateM, unless)
-import           Control.Monad.Fix       (fix)
-import           System.IO               (hPutStrLn, stdout)
+import           Control.Concurrent.STM.TChan
+import           Control.Monad                (replicateM, unless, when)
+import           Control.Monad.Fix            (fix)
+import           System.IO                    (hPutStrLn, stdout)
 import           System.Random
 
 import           SQueue
 import           SStack
 
-chPrint :: Chan String -> IO ()
-chPrint chan = fix $ \f -> do
-    str <- readChan chan
+chPrint :: TChan String -> IO ()
+chPrint chan = fix $ \loop -> do
+    str <- atomically $ readTChan chan
     hPutStrLn stdout str
-    f
+    loop
 
 -- Basic Test
 main :: IO ()
-main = queueTest
+main = qwho
 
-stackTest = do
-    queue <- atomically newSStack :: IO (SStack Int)
-    chan <- newChan
-    forkIO $ chPrint chan
-    mapM_ forkIO $ replicate nOps (pop' chan queue)
-    push' queue
-    threadDelay 1000000
-    hPutStrLn stdout "Finished."
-     where
-     nOps = 80000
-     push' q = do nums <- replicateM nOps (randomRIO (1,20))
-                  mapM_ (push q) nums
-                  return ()
-     pop' chan q = do num <- pop q
-                      writeChan chan $  "Pop'd " ++ show num
-
-queueTest = do
+qwho = do
     queue <- atomically newSQueue :: IO (SQueue Int)
-    chan <- newChan
+    chan <- newTChanIO
+    count <- atomically $ newTVar 0
     forkIO $ chPrint chan
-    mapM_ forkIO $ replicate nOps (deq' chan queue)
-    enq' queue
-    threadDelay 1000000
-    hPutStrLn stdout "Finished."
+    mapM_ forkIO $ replicate nThreads (deq' count chan queue)
+    mapM_ forkIO $ replicate nThreads (enq' queue)
+    atomically $ do
+        ct <- readTVar count
+        unless (ct == nOps*nThreads) retry
+    atomically $ do
+        b <- isEmptyTChan chan
+        unless b retry
+    fct <- atomically $ readTVar count
+    hPutStrLn stdout $ "Finished. Deq'd " ++ show fct ++ " times." 
      where
+     nThreads = 8
      nOps = 80000
      enq' q = do nums <- replicateM nOps (randomRIO (1,20))
                  mapM_ (enqueue q) nums
                  return ()
-     deq' chan q = do num <- deq q
-                      writeChan chan $ "Deq'd " ++ show num
+     deq' ct chan q = fix $ \loop -> do
+            num <- deq q
+            atomically $ writeTChan chan $ "Deq'd " ++ show num
+            atomically $ modifyTVar ct (+1)
+            loop
