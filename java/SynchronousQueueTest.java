@@ -1,4 +1,3 @@
-import java.util.Timer;
 import java.util.Random;
 import java.util.Arrays;
 import java.util.Collections;
@@ -81,7 +80,8 @@ public class SynchronousQueueTest
   {
     if (args.length < 3)
     {
-      System.out.println("Syntax: java SynchronousQueueTest <num_producers> <num_consumers> <num_ops_each>");
+      System.out.print("Syntax: java SynchronousQueueTest <num_producers> <num_consumers> ");
+      System.out.println("<num_producer_ops> <num_consumer_ops>");
       System.exit(1);
     }
 
@@ -89,13 +89,13 @@ public class SynchronousQueueTest
     
     int numProducers = Integer.parseInt(args[0]);
     int numConsumers = Integer.parseInt(args[1]);
-    int numOps       = Integer.parseInt(args[2]);
+    int numProdOps   = Integer.parseInt(args[2]);
+    int numConsOps   = Integer.parseInt(args[3]);
+
     int numThreads   = numProducers + numConsumers;
 
-    System.out.println("Num producers: " + numProducers);
-    System.out.println("Num consumers: " + numConsumers);
-    System.out.println("Ops per thread: " + numOps);
-    System.out.println("Total ops: " + numOps * numThreads);
+    System.out.println(numProducers + " thread(s) executing " + numProdOps + " enqueues each");
+    System.out.println(numConsumers + " thread(s) executing " + numConsOps + " dequeues each");
 
     ThreadSchedule [] schedules = new ThreadSchedule[numThreads];
 
@@ -104,20 +104,17 @@ public class SynchronousQueueTest
     {
       if (numProducers > 0)
       {
-        schedules[i] = new ThreadSchedule(i, syncQueue, numOps, true);
+        schedules[i] = new ThreadSchedule(i, syncQueue, numProdOps, true);
         numProducers--;
       }
       else
       {
-        schedules[i] = new ThreadSchedule(i, syncQueue, numOps, false);
+        schedules[i] = new ThreadSchedule(i, syncQueue, numConsOps, false);
       }
     }
 
     // Shuffle start order of threads
     Collections.shuffle(Arrays.asList(schedules));
-
-    // Begin recording test time
-    double startMs = System.currentTimeMillis();
 
     // Start execution of each thread
     for (ThreadSchedule sched : schedules)
@@ -144,10 +141,5 @@ public class SynchronousQueueTest
         System.out.println(e);
       }
     }
-
-    // Stop recording test time
-    double endMs = System.currentTimeMillis();
-
-    System.out.println("\n(Unreliable) Runtime: " + Double.toString(endMs - startMs) + " ms");
   }
 }
