@@ -4,40 +4,29 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.SynchronousQueue;
 
-class QueueSchedule extends Thread
+class ThreadSchedule extends Thread
 {
   Thread thread;
-  boolean isProducer;
+  boolean [] ops;
   int threadID, numOps;
-  int [] enqVals;
   SynchronousQueue<Integer> syncQueue;
 
-  QueueSchedule(int threadID, SynchronousQueue<Integer> syncQueue, int numOps, boolean isProducer)
+  ThreadSchedule(int threadID, SynchronousQueue<Integer> syncQueue, int numOps, boolean [] ops)
   {
     this.numOps = numOps;
     this.threadID = threadID;
     this.syncQueue = syncQueue;
-    this.isProducer = isProducer;
-
-    if (isProducer)
-    {
-      enqVals = new int[numOps];
-      Random rand = new Random();
-
-      for (int i = 0; i < numOps; i++)
-        enqVals[i] = rand.nextInt(100);
-    }
+    this.ops = ops;
   }
 
   public void run()
   {
-    if (isProducer)
+    for (int i = 0; i < numOps; i++)
     {
-      for (int i : enqVals)
+      if (ops[i]) // Enqueue (w/ i as value to enqueue)
       {
         try
         {
-          System.out.println(threadID + " enq: " + i);
           syncQueue.put(i);
         }
         catch (Exception e)
@@ -45,29 +34,22 @@ class QueueSchedule extends Thread
           System.out.println(e);
         }
       }
-    }
-    else
-    {
-      while (numOps > 0)
+      else // Dequeue
       {
         try
         {
-           System.out.println(threadID + " deq: " + syncQueue.take());
+          syncQueue.take();
         }
         catch (Exception e)
         {
           System.out.println(e);
         }
-
-        numOps--;
       }
     }
   }
 
   public void start()
   {
-    System.out.println("Starting " + threadID);
-
     if (thread == null)
     {
       thread = new Thread(this, Integer.toString(threadID));
@@ -82,42 +64,67 @@ public class SynchronousQueueTest
   {
     if (args.length < 3)
     {
-      System.out.println("Syntax: java SynchronousQueueTest <num_producers> <num_consumers> <num_ops>");
+      System.out.println("Syntax: java SynchronousQueueTest <num_threads> <num_ops_per_thread> <percent_enqueues>");
       System.exit(1);
     }
 
     SynchronousQueue<Integer> syncQueue = new SynchronousQueue<Integer>();
     
-    int numProducers = Integer.parseInt(args[0]);
-    int numConsumers = Integer.parseInt(args[1]);
-    int numOps = Integer.parseInt(args[2]);
+    int numThreads = Integer.parseInt(args[0]);
+    int numOps     = Integer.parseInt(args[1]);
+    int enqPercent = Integer.parseInt(args[2]);
 
-    QueueSchedule [] tests = new QueueSchedule[numProducers + numConsumers];
+    double enqCountD   = (numOps * numThreads) * (enqPercent / 100.0);
+    int enqCount = (int) enqCountD;
 
-    for (int i = 0; i < tests.length; i++)
+    System.out.println("Num threads: " + numThreads);
+    System.out.println("Num ops per thread: " + numOps);
+    System.out.println("Enq percent: " + enqPercent);
+    System.out.println("Enq count: " + enqCount);
+
+    // Create boolean array of operations. True represents an enqueue, false represents a dequeue
+    // Note: Use of 'Boolean' rather than 'boolean' allows for shuffling of array below
+    Boolean [] allOps = new Boolean[numOps * numThreads];
+
+    for (int i = 0; i < allOps.length; i++)
     {
-      if (numProducers > 0)
+      allOps[i] = (enqCount > 0);
+      enqCount--;
+    }
+
+    // Randomly distribute enqueues and dequeues
+    Collections.shuffle(Arrays.asList(allOps));
+
+    // Create an array of operations for each thread to execute
+    boolean [][] threadOps = new boolean[numThreads][numOps];
+    int opIdx = 0;
+
+    // Assign the randomly distributed operations
+    for (int i = 0; i < numThreads; i++)
+    {
+      for (int j = 0; j < numOps; j++)
       {
-        tests[i] = new QueueSchedule(i, syncQueue, numOps, true); // Create producer
-        numProducers--;
-      }
-      else if (numConsumers > 0)
-      {
-        tests[i] = new QueueSchedule(i, syncQueue, numOps, false); // Create consumer
-        numConsumers--;
+        threadOps[i][j] = allOps[opIdx++];
       }
     }
 
-    // Randomly distribute producer(s) and enqueuer(s)
-    Collections.shuffle(Arrays.asList(tests));
+    ThreadSchedule [] schedules = new ThreadSchedule[numThreads];
 
+    // Create threads and assign them their generated list of operations
+    for (int i = 0; i < schedules.length; i++)
+    {
+      schedules[i] = new ThreadSchedule(i, syncQueue, numOps, threadOps[i]);
+    }
+
+    // Begin recording test time
     double startMs = System.currentTimeMillis();
 
-    for (QueueSchedule qs : tests)
+    // Start execution of each thread
+    for (ThreadSchedule sched : schedules)
     {
       try
       {
-        qs.start();
+        sched.start();
       }
       catch (Exception e)
       {
@@ -125,11 +132,12 @@ public class SynchronousQueueTest
       }
     }
 
-    for (QueueSchedule qs : tests)
+    // Join threads after they complete execution
+    for (ThreadSchedule sched : schedules)
     {
       try
       {
-        qs.join();
+        sched.join();
       }
       catch (Exception e)
       {
@@ -137,6 +145,7 @@ public class SynchronousQueueTest
       }
     }
 
+    // Stop recording test time
     double endMs = System.currentTimeMillis();
 
     System.out.println("Runtime: " + Double.toString(endMs - startMs) + " ms");
