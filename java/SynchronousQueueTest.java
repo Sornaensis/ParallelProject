@@ -74,11 +74,11 @@ public class SynchronousQueueTest
     int numOps     = Integer.parseInt(args[1]);
     int enqPercent = Integer.parseInt(args[2]);
 
-    double enqCountD   = (numOps * numThreads) * (enqPercent / 100.0);
-    int enqCount = (int) enqCountD;
+    int enqCount = (int)((numOps * numThreads) * (enqPercent / 100.0));
 
     System.out.println("Num threads: " + numThreads);
-    System.out.println("Num ops per thread: " + numOps);
+    System.out.println("Ops per thread: " + numOps);
+    System.out.println("Total ops: " + numOps * numThreads);
     System.out.println("Enq percent: " + enqPercent);
     System.out.println("Enq count: " + enqCount);
 
@@ -148,6 +148,6 @@ public class SynchronousQueueTest
     // Stop recording test time
     double endMs = System.currentTimeMillis();
 
-    System.out.println("Runtime: " + Double.toString(endMs - startMs) + " ms");
+    System.out.println("\nRuntime: " + Double.toString(endMs - startMs) + " ms");
   }
 }
