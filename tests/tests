@@ -69,7 +69,7 @@ do
 	echo $dur >> jOut8_n1.t
 
 	start=$(date +%s.%N); \
-	java SynchronousQueueTest 7 1 500000 7500000
+	java SynchronousQueueTest 15 1 500000 7500000
 	dur=$(echo "$(date +%s.%N) - $start" | bc); \
 	echo $dur >> jOut16_n1.t
 
