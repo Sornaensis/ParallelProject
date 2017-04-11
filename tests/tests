@@ -26,9 +26,9 @@ do
 	java SynchronousQueueTest 1 1 500000 500000 >> jOut2_nn.t
 	java SynchronousQueueTest 2 2 1000000 1000000 >> jOut4_nn.t
 	java SynchronousQueueTest 4 4 2000000 2000000 >> jOut8_nn.t
-	java SynchronousQueueTest 1 3 500000 1500000 >> jOut4_1n.t
-	java SynchronousQueueTest 1 7 500000 3500000 >> jOut8_1n.t
-	java SynchronousQueueTest 3 1 1500000 500000 >> jOut4_n1.t
-	java SynchronousQueueTest 7 1 3500000 500000 >> jOut4_n1.t
+	java SynchronousQueueTest 1 3 1500000 500000 >> jOut4_1n.t
+	java SynchronousQueueTest 1 7 3500000 500000 >> jOut8_1n.t
+	java SynchronousQueueTest 3 1 500000 1500000 >> jOut4_n1.t
+	java SynchronousQueueTest 7 1 500000 3500000 >> jOut4_n1.t
 
 done
