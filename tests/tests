@@ -1,23 +1,26 @@
 #! /bin/bash
 rm *.t
-times=10
+times=1
 for i in {1..$times..1}
 do
 	./test-con-q-2 --Nprods 1 --Nconsm 1 --Nops 500000 >> hTest2_nn.t
 	./test-con-q-4 --Nprods 2 --Nconsm 2 --Nops 500000 >> hTest4_nn.t
 	./test-con-q-8 --Nprods 4 --Nconsm 4 --Nops 500000 >> hTest8_nn.t
+	./test-con-q-16 --Nprods 4 --Nconsm 4 --Nops 500000 >> hTest16_nn.t
 done
 
 for i in {1..$times..1}
 do
 	./test-con-q-4 --Nprods 1 --Nconsm 3 --Nops 500000 >> hTest4_1n.t
 	./test-con-q-8 --Nprods 1 --Nconsm 7 --Nops 500000 >> hTest8_1n.t
+	./test-con-q-16 --Nprods 1 --Nconsm 7 --Nops 500000 >> hTest16_1n.t
 done
 
 for i in {1..$times..1}
 do
 	./test-con-q-4 --Nprods 3 --Nconsm 1 --Nops 500000 >> hTest4_n1.t
 	./test-con-q-8 --Nprods 7 --Nconsm 1 --Nops 500000 >> hTest8_n1.t
+	./test-con-q-16 --Nprods 7 --Nconsm 1 --Nops 500000 >> hTest16_n1.t
 done
 
 
