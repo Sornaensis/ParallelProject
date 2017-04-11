@@ -1,5 +1,5 @@
-To run tests, copy all build outputs test-con-q-2, test-con-q-4, test-con-q-8,
+To run tests, copy all build outputs test-con-q-$X,
 SynchronousQueueTest.class and ThreadScheduler.class in this directory.
 
 Assuming tests has the executable bit set, simply run ./tests and files be created
-with the runtimes of each test
+with the runtimes of each test.
