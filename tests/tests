@@ -1,0 +1,34 @@
+#! /bin/bash
+rm *.t
+times=1
+for i in {1..$times..1}
+do
+	./test-con-q-2 --Nprods 1 --Nconsm 1 --Nops 1000000 >> hTest2_nn.t
+	./test-con-q-4 --Nprods 2 --Nconsm 2 --Nops 4000000 >> hTest4_nn.t
+	#./test-con-q-8 --Nprods 4 --Nconsm 4 --Nops 8000000 >> hTest8_nn.t
+done
+
+for i in {1..$times..1}
+do
+	./test-con-q-4 --Nprods 1 --Nconsm 3 --Nops 4000000 >> hTest4_1n.t
+	./test-con-q-8 --Nprods 1 --Nconsm 7 --Nops 8000000 >> hTest8_1n.t
+done
+
+for i in {1..$times..1}
+do
+	./test-con-q-4 --Nprods 3 --Nconsm 1 --Nops 4000000 >> hTest4_n1.t
+	#./test-con-q-8 --Nprods 7 --Nconsm 1 --Nops 8000000 >> hTest8_n1t
+done
+
+
+for i in {1..$times..1}
+do
+	java SynchronousQueueTest 1 1 500000 500000 >> jOut2_nn.t
+	java SynchronousQueueTest 2 2 1000000 1000000 >> jOut4_nn.t
+	java SynchronousQueueTest 4 4 2000000 2000000 >> jOut8_nn.t
+	java SynchronousQueueTest 1 3 500000 1500000 >> jOut4_1n.t
+	java SynchronousQueueTest 1 7 500000 3500000 >> jOut8_1n.t
+	java SynchronousQueueTest 3 1 1500000 500000 >> jOut4_n1.t
+	java SynchronousQueueTest 7 1 3500000 500000 >> jOut4_n1.t
+
+done
