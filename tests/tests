@@ -17,7 +17,7 @@ done
 for i in {1..$times..1}
 do
 	./test-con-q-4 --Nprods 3 --Nconsm 1 --Nops 500000 >> hTest4_n1.t
-	./test-con-q-8 --Nprods 7 --Nconsm 1 --Nops 500000 >> hTest8_n1t
+	./test-con-q-8 --Nprods 7 --Nconsm 1 --Nops 500000 >> hTest8_n1.t
 done
 
 
